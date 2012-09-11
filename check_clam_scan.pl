@@ -28,6 +28,7 @@
 use strict;
 use warnings;
 use Getopt::Long qw(:config no_ignore_case);#case sensitive
+use Proc::ProcessTable;#check if scanner is running
 
 our $CLAMSCAN;
 
@@ -47,6 +48,16 @@ sub checkClamscanBin{
 	}
 	return '';
 }
+sub clamIsRunning{
+	my $scanDir = quotemeta(shift);#the scanned directory
+	print $scanDir."\n";
+	my $t = new Proc::ProcessTable;
+	foreach my $p ( @{$t->table} ){
+		if($p->cmndline =~ m/^clamscan.+$scanDir/){
+			print $p->pid;
+		}
+	}
+}
 
 
 MAIN: {
@@ -60,7 +71,8 @@ MAIN: {
 		print "Error: Could not find clamscan binary with 'which clamscan'.\n";
 		exit(3);
 	}
-	my $verbosity = 0;
+	my $verbosity = 0;#verbose levels
+	my $scanDir;#dirextory to be scanned
 	#Parse command line options
 	if( !(Getopt::Long::GetOptions(
 		'h|help'	=>
@@ -78,8 +90,19 @@ MAIN: {
 		'v|verbosity'	=>	\$verbosity,
 		'vv'			=> sub{$verbosity=2},
 		'vvv'			=> sub{$verbosity=3},
+		'sd|scandir=s'	=> \$scanDir,
 	))){
-		print get_usage()."\n";
+		print getUsage()."\n";
 		exit(1);
 	}
+	if(@ARGV){
+		#we don't want any unused command line arguments
+		print getUsage()."\n";
+		exit(3);
+	}
+	if((substr $scanDir,-1,1) eq '/'){
+		chop $scanDir;
+	}
+	clamIsRunning($scanDir);		
+	
 }
