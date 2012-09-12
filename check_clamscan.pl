@@ -42,7 +42,19 @@ our %PERF_THRESHOLDS = (
 
 
 sub getVersion{
-	
+		return "check_clamscan version 0.1 20120912
+Copyright (C) 2012 Thomas-Krenn.AG (written by Georg Schönberger)
+Current updates available via git repository git.thomas-krenn.com.
+Your system is using ".getClamscanVersion();
+}
+sub getClamscanVersion{
+	if($CLAMSCAN eq ''){
+		print "Error: Could not find clamscan binary with 'which clamscan'.\n";
+		exit(3);
+	}
+	else{
+		return `clamscan -V`;
+	}
 }
 sub getUsage{
 	
@@ -51,7 +63,7 @@ sub getHelp{
 	
 }
 sub checkClamscanBin{
-	my $clamBin = `which clamscan`;
+	my $clamBin = `which clamscan 2>&1`;
 	if($clamBin =~ m/clamscan/){
 		return $clamBin;
 	}
@@ -74,13 +86,13 @@ sub parseClamLog{
 	open(my $fd, "<", $clamLog)
     	or die "Error: Cannot open < $clamLog: $!";
 	
-	my $pattern = "----------- SCAN SUMMARY -----------";
+	my $pattern = "SCAN SUMMARY";
 	my $found;
 	while(<$fd>){
 		my $line = $_;
 		chomp($line);
 		#Check if scan summary is found
-		if($line eq $pattern){
+		if($line =~ m/$pattern/){
 			$found = 1;
 			next;
 		}
