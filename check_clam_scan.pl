@@ -37,6 +37,7 @@ our $CLAMSCAN;#path to clamscan binary
 #warning and critical threshold levels
 our %PERF_THRESHOLDS = (
 	scan_interval => ['2','5'], #days between scans
+	infected_files => ['1','1'], #number of infected files
 );
 
 
@@ -87,10 +88,23 @@ sub parseClamLog{
 		#Split at : and use values after it
 		#Lower key and substitute whitespaces
 		if($found){
-			my @stat = split(': ',$line);
-			$stat[0] = lc $stat[0];
-			$stat[0] =~ s/\s/\_/g;
-			$scanStat{$stat[0]} = $stat[1];
+			my @clamStat = split(': ',$line);
+			$clamStat[0] = lc $clamStat[0];
+			$clamStat[0] =~ s/\s/\_/g;
+			
+			#remove whitespace from values
+			$clamStat[1] =~ s/\s//g;
+			#remove everything after MB
+			if($clamStat[1] =~ m/MB.*/){
+				$clamStat[1] =~ s/(MB).*/$1/;	
+			}
+			#change from sec to s
+			if($clamStat[1] =~ m/(\d+\.\d+)(sec).*/){
+				my $newStat = $clamStat[1]; 
+				$newStat =~ /(\d+\.\d+)(sec).*/;
+				$clamStat[1] = $1.'s'
+			}
+			$scanStat{$clamStat[0]} = $clamStat[1];
 		}		
 	}
 	return %scanStat;
@@ -100,11 +114,14 @@ sub getLastModified{
 	my $clamLog = shift;
 	my @logStat = stat($clamLog);
 	#index 9 is mtime of stat
-	my @mtime = localtime($logStat[0][9]);
+	my $mtime = $logStat[0][9];
+	my $modDate = localtime($mtime);
+	my @a_mtime = (localtime($mtime));
 	my @today = localtime;
 	my $dD = Delta_Days($today[5],$today[4],$today[3],
-						$mtime[5],$mtime[4],$mtime[3]);
-	return $dD;
+						$a_mtime[5],$a_mtime[4],$a_mtime[3]);
+	#as run was in the past mutiply with -1
+	return ($dD * -1,$modDate);
 }
 
 sub checkThlds{
@@ -148,7 +165,7 @@ sub checkThlds{
 			#critical level
 			if($perfData{$k} >= $PERF_THRESHOLDS{$k}[1]){
 				$statusLevel[0] = "Critical";
-				pop(@critSens);#as it is critical, remove it from warning
+				pop(@warnSens);#as it is critical, remove it from warning
 				push(@critSens,$k);
 			}
 		}		
@@ -156,6 +173,59 @@ sub checkThlds{
 	push(@statusLevel,\@warnSens);
 	push(@statusLevel,\@critSens);
 	return \@statusLevel;
+}
+#Form a status string with warning, crit sensor values
+#or performance data followed by their thresholds
+sub getStrStatus{
+	my $level = shift;
+	my $currSensors = shift;
+	my $perfData = shift;
+	my $verbosity = shift;
+	my $str_status = "";
+
+	if($level ne "Warning" && $level ne "Critical"
+		&& $level ne "Performance"){
+		return;
+	}
+	if($level eq "Warning"){
+		$currSensors = $currSensors->[1];
+	}
+	if($level eq "Critical"){
+		$currSensors = $currSensors->[2];
+	}
+	my $i = 1;
+	#Collect performance data of warn and crit sensors
+	if($level eq "Warning" || $level eq "Critical"){
+		if(@$currSensors){
+			foreach my $sensor (@$currSensors){
+				$str_status .= "[".$sensor." = ".$level;
+				if($verbosity){
+					$str_status .= " (".$perfData->{$sensor}.")";	
+				}
+				$str_status .= "]";
+				if($i != @$currSensors){
+					$str_status .= " ";#print a space except at the end
+				}
+				$i++;
+			}
+		}
+	}
+	#Collect performance values followed by thresholds
+	if($level eq "Performance"){
+		foreach my $k (keys %$currSensors){
+			$str_status .= $k."=".$currSensors->{$k};
+			#print warn and crit thresholds
+			if(exists $PERF_THRESHOLDS{$k}){
+				$str_status .= ";".$PERF_THRESHOLDS{$k}[0];
+				$str_status .= ";".$PERF_THRESHOLDS{$k}[1].";";
+			}
+			if($i != (keys %$currSensors)){
+				$str_status .= " ";
+			}
+			$i++;
+		}	
+	}
+	return $str_status;
 }
 
 MAIN: {
@@ -170,7 +240,7 @@ MAIN: {
 		exit(3);
 	}
 	my $verbosity = 0;#verbose levels
-	my $scanDir;#dirextory to be scanned
+	my $scanDir;#directory to be scanned
 	my $clamLog;#log of clamscan
 	my $scanInterval;#interval of clam scans
 	my @warnThlds = ();#change thresholds for performance data
@@ -224,16 +294,13 @@ MAIN: {
 	if((substr $scanDir,-1,1) eq '/'){
 		chop $scanDir;
 	}
+	#Check if scan is running
 	my($ret,$pid,$start) = clamIsRunning($scanDir);
-	if($ret eq 1 && $pid ne 0){
-		print "Info: clamscan started at $start and is running with pid $pid.\n";
-		exit(3);#TODO Correct exit code?
-	}
 	
 	#Start checking status of clamscan
 	my $exitCode = 0;
 	my %scanStat = parseClamLog($clamLog);
-	$scanStat{'scan_interval'} = getLastModified($clamLog);
+	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
 
 	#check thresholds
 	my $statusLevel = checkThlds(\@warnThlds,\@warnThlds,\%scanStat);
@@ -244,5 +311,16 @@ MAIN: {
 	if($statusLevel->[0] eq "Warning"){
 		$exitCode = 1;#Warning
 	}
-	
+	#print status and performance values
+	print $statusLevel->[0]." - ";
+	if($ret eq 1 && $pid ne 0){
+		print "Pid ".$pid." since ".$start;
+	}
+	else{
+		print "Last run ".scalar($lastRun)." ";
+	}
+	print getStrStatus("Critical",$statusLevel,\%scanStat,$verbosity);
+	print getStrStatus("Warning",$statusLevel,\%scanStat,$verbosity);
+	print "|";
+	print getStrStatus("Performance",\%scanStat);
 }
