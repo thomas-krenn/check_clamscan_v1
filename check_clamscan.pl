@@ -57,10 +57,46 @@ sub getClamscanVersion{
 	}
 }
 sub getUsage{
-	
+	return "Usage:
+check_clamscan -sd <scanned directory> -l <clamscan log file> | [-w <list of warn levels>]
+[-c <list of crit levels>] [-v|-vv|-vvv] [-h] [-V]"
 }
 sub getHelp{
-	
+	return "
+
+  [-sd <scanned directory>]
+        Provide the path to the directory scanned by clamscan. This is useful to detect if
+        clamscan is currently running and scanning the directory.
+  [-l <clamscan log file>]
+        Provide the path to the clamscan log output. Clamscan should be called with
+        the '--stdout' and the output redirected to the log file via '>'.
+        E.g. clamscan -r /files --stdout > clamscan.log
+  [-w <list of warning thresholds>]
+       Change the default warning levels. The order of the levels
+       is the following:
+       -scan_interval
+       -infected_files
+       Levels that should stay default get a 'd' assigned.
+       Example:
+           check_clamscan.pl -w '5,d' 
+       This changes the warning level for the scan interval to 5 days.
+  [-c <list of critical thresholds>]
+       Change the default critical levels. The order of the levels
+       is the same as for the warning levels.
+       Levels that should stay default get a 'd' assigned.
+       Example:
+           check_gpu_sensor.pl -c '7,d' 
+       This changes the critical level for the scan interval to 7 days.  		
+  [-v <Verbose Level>]
+       be verbose
+         (no -v) .. single line output
+         -v ..... single line output with additional details for warnings
+         -vv ..... multi line output, also with additional details for warnings
+         -vvv ..... normal output, then debugging output, followed by normal multi line output
+  [-h]
+       show this help
+  [-V]
+       show version information";
 }
 sub checkClamscanBin{
 	my $clamBin = `which clamscan 2>&1`;
@@ -239,7 +275,30 @@ sub getStrStatus{
 	}
 	return $str_status;
 }
-
+sub getStrVerbose{
+	my $verbosity = shift;
+	my $scanDir = shift;
+	my $clamLog = shift;
+	my %scanStat = %{(shift)};
+	my $str_status = "";
+	
+	if($verbosity == 3){
+		$str_status .= "------------- begin of debug output (-vvv is set): ------------\n";
+		$str_status .= "ClamAV version: ".getClamscanVersion();
+		$str_status .= "ClamAV binary: ".$CLAMSCAN;
+		$str_status .= "ClamAV scanned directory: ".$scanDir."\n";
+		$str_status .= "ClamAV log output: ".$clamLog."\n";
+		$str_status .= "----Available scan summary----\n";
+		foreach my $k (keys %scanStat){
+			$str_status .= $k." : ".$scanStat{$k}."\n";			
+		}
+	}
+	if($verbosity == 3){
+		$str_status .= "------------- end of debug output ------------\n";
+		$str_status .= getStrStatus("Performance",\%scanStat);
+	}
+	return $str_status;
+}
 MAIN: {
 	
 	#First, check for clamscan binary
@@ -254,7 +313,6 @@ MAIN: {
 	my $verbosity = 0;#verbose levels
 	my $scanDir;#directory to be scanned
 	my $clamLog;#log of clamscan
-	my $scanInterval;#interval of clam scans
 	my @warnThlds = ();#change thresholds for performance data
 	my @critThlds = ();
 	
@@ -277,7 +335,8 @@ MAIN: {
 		'vvv'			=> sub{$verbosity=3},
 		'sd|scandir=s'	=> \$scanDir,
 		'l|log=s'	=> \$clamLog,
-		'si|scaninterval=i'	=> \$scanInterval,
+		'w|warning=s' => \@warnThlds,
+		'c|critical=s' => \@critThlds,
 	))){
 		print getUsage()."\n";
 		exit(1);
@@ -313,7 +372,7 @@ MAIN: {
 	my $exitCode = 0;
 	my %scanStat = parseClamLog($clamLog);
 	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
-
+	$scanStat{'infected_files'} = 2;
 	#check thresholds
 	my $statusLevel = checkThlds(\@warnThlds,\@warnThlds,\%scanStat);
 	#check return values of threshold function
@@ -335,4 +394,5 @@ MAIN: {
 	print getStrStatus("Warning",$statusLevel,\%scanStat,$verbosity);
 	print "|";
 	print getStrStatus("Performance",\%scanStat);
+	print "\n".getStrVerbose($verbosity,$scanDir,$clamLog,\%scanStat);
 }
