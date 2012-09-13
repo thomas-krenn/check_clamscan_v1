@@ -385,7 +385,7 @@ MAIN: {
 	#print status and performance values
 	print $statusLevel->[0]." - ";
 	if($ret eq 1 && $pid ne 0){
-		print "Pid ".$pid." since ".$start;
+		print "Pid ".$pid." since ".$start." ";
 	}
 	else{
 		print "Last run ".scalar($lastRun)." ";
