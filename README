@@ -1,0 +1,39 @@
+                            check_clamscan
+                            ==============
+
+ check_clamscan: Nagios/Icinga plugin to check the results of a clamAV scan.
+
+ Copyright (C) 2012 Thomas-Krenn.AG,
+
+ This program is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation; either version 3 of the License, or (at your option) any later
+ version.
+ 
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ details.
+ 
+ You should have received a copy of the GNU General Public License along with
+ this program; if not, see <http://www.gnu.org/licenses/>.
+
+ Requirements:
+ -------------
+   o Perl
+   o Required perl modules
+	 * use strict;
+	 * use warnings;
+	 * use Getopt::Long;
+	 * use Proc::ProcessTable;
+	 * use File::stat;
+	 * use Switch;
+	 * use Date::Calc qw(Delta_Days);
+   o Nagios or Icinga
+
+
+ Installation hints:
+ -------------------
+   On Ubuntu use
+   $ sudo apt-get install libproc-processtable-perl
+   to install the module for accessing the process table.
