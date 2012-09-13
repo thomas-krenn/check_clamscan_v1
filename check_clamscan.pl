@@ -372,7 +372,7 @@ MAIN: {
 	my $exitCode = 0;
 	my %scanStat = parseClamLog($clamLog);
 	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
-	$scanStat{'infected_files'} = 2;
+
 	#check thresholds
 	my $statusLevel = checkThlds(\@warnThlds,\@warnThlds,\%scanStat);
 	#check return values of threshold function
