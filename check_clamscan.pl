@@ -374,7 +374,7 @@ MAIN: {
 	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
 
 	#check thresholds
-	my $statusLevel = checkThlds(\@warnThlds,\@warnThlds,\%scanStat);
+	my $statusLevel = checkThlds(\@warnThlds,\@critThlds,\%scanStat);
 	#check return values of threshold function
 	if($statusLevel->[0] eq "Critical"){
 		$exitCode = 2;#Critical
