@@ -110,7 +110,8 @@ sub clamIsRunning{
 	my $t = new Proc::ProcessTable;
 	foreach my $p ( @{$t->table} ){
 		if($p->cmndline =~ m/^clamscan.+$scanDir/){
-			return(1,$p->pid,scalar(localtime($p->start)));
+			my @pstart = (localtime($p->start));
+			return(1,$p->pid,@pstart);
 		}
 	}
 	return (0,0,0);
@@ -119,8 +120,12 @@ sub clamIsRunning{
 sub parseClamLog{
 	my $clamLog = shift;
 	my %scanStat;
-	open(my $fd, "<", $clamLog)
-    	or die "Error: Cannot open < $clamLog: $!";
+	
+	my $fd; #fd for log file
+	unless (open($fd, "<", $clamLog)){
+		$scanStat{'clamscan_log'} = "Error: opening log";
+		return %scanStat;
+	}
 	
 	my $pattern = "SCAN SUMMARY";
 	my $found;
@@ -155,6 +160,11 @@ sub parseClamLog{
 			$scanStat{$clamStat[0]} = $clamStat[1];
 		}		
 	}
+	#did not find any summary
+	if(not $found){
+		$scanStat{'clamscan_log'} = "Error: no scan summary";
+	}
+	
 	return %scanStat;
 }
 
@@ -366,15 +376,39 @@ MAIN: {
 		chop $scanDir;
 	}
 	#Check if scan is running
-	my($ret,$pid,$start) = clamIsRunning($scanDir);
+	my($ret,$pid,@start) = clamIsRunning($scanDir);
+	
+	#TODO Print warning if clamscan is running to long
+	#TODO Check if clamlog file is correct -> then no perf data
+	
+	
+	#check running of clamscan
+	if($ret eq 1 && $pid ne 0){
+		#
+		
+		
+	}	
 	
 	#Start checking status of clamscan
 	my $exitCode = 0;
 	my %scanStat = parseClamLog($clamLog);
+	#if the log file could not be checked 
+	if(exists $scanStat{'clamscan_log'}){
+		print "Critical - clamscan_log encountered an error ";
+		if(not $verbosity){
+			print "[clamscan_log = Critical]";
+		}
+		if($verbosity){
+			print "[clamscan_log = Critical (".$scanStat{'clamscan_log'}.")]";
+		}
+		exit(2);#exit with critical		
+	}
+	
 	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
 
 	#check thresholds
-	my $statusLevel = checkThlds(\@warnThlds,\@warnThlds,\%scanStat);
+	my $statusLevel = checkThlds(\@warnThlds,\@critThlds,\%scanStat);
+	
 	#check return values of threshold function
 	if($statusLevel->[0] eq "Critical"){
 		$exitCode = 2;#Critical
@@ -384,15 +418,11 @@ MAIN: {
 	}
 	#print status and performance values
 	print $statusLevel->[0]." - ";
-	if($ret eq 1 && $pid ne 0){
-		print "Pid ".$pid." since ".$start." ";
-	}
-	else{
-		print "Last run ".scalar($lastRun)." ";
-	}
+	print "Last run ".scalar($lastRun)." ";
 	print getStrStatus("Critical",$statusLevel,\%scanStat,$verbosity);
 	print getStrStatus("Warning",$statusLevel,\%scanStat,$verbosity);
 	print "|";
 	print getStrStatus("Performance",\%scanStat);
 	print "\n".getStrVerbose($verbosity,$scanDir,$clamLog,\%scanStat);
+	exit $exitCode;
 }
