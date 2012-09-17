@@ -395,4 +395,5 @@ MAIN: {
 	print "|";
 	print getStrStatus("Performance",\%scanStat);
 	print "\n".getStrVerbose($verbosity,$scanDir,$clamLog,\%scanStat);
+	exit($exitCode);
 }
