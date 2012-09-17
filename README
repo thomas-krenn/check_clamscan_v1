@@ -34,6 +34,25 @@
 
  Installation hints:
  -------------------
-   On Ubuntu use
-   $ sudo apt-get install libproc-processtable-perl
-   to install the module for accessing the process table.
+   On Debian/Ubuntu use
+   $ sudo apt-get install libproc-processtable-perl libclass-date-perl 
+   to install the module for accessing the process table and date functions.
+
+ Cron Job for Clamscan:
+ -------------------
+
+/etc/cron.daily/clamscan:
+#!/bin/sh
+clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
+
+  Logrotate Job for Clamscan:
+  -------------------
+
+/etc/logrotate.d/clamscan:
+/var/log/clamav/clamscan.log {
+     rotate 30
+     daily
+     ifempty
+     missingok
+     nocompress
+}
