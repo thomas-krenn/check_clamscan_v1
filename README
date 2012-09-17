@@ -41,6 +41,9 @@
  Cron Job for Clamscan:
  -------------------
 
+touch /etc/cron.daily/clamscan
+chmod +x /etc/cron.daily/clamscan
+
 /etc/cron.daily/clamscan:
 #!/bin/sh
 clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
