@@ -33,7 +33,6 @@ use File::stat;
 use Switch;
 use Date::Calc qw(Delta_Days);
 use Date::Calc qw(Delta_DHMS);
-use POSIX;
 
 our $CLAMSCAN;#path to clamscan binary
 #warning and critical threshold levels
