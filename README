@@ -46,12 +46,13 @@ chmod +x /etc/cron.daily/clamscan
 
 /etc/cron.daily/clamscan:
 #!/bin/sh
+logrotate -f /etc/logrotate_clamscan.conf
 clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
 
   Logrotate Job for Clamscan:
   -------------------
 
-/etc/logrotate.d/clamscan:
+/etc/logrotate_clamscan.conf
 /var/log/clamav/clamscan.log {
      rotate 30
      daily
