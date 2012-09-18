@@ -32,12 +32,15 @@ use Proc::ProcessTable;#check if scanner is running
 use File::stat;
 use Switch;
 use Date::Calc qw(Delta_Days);
+use Date::Calc qw(Delta_DHMS);
+use POSIX;
 
 our $CLAMSCAN;#path to clamscan binary
 #warning and critical threshold levels
 our %PERF_THRESHOLDS = (
 	scan_interval => ['2','5'], #days between scans
 	infected_files => ['1','1'], #number of infected files
+	scan_runtime => ['12','24'] #runtime of a clamscan run in hours
 );
 
 
@@ -110,17 +113,57 @@ sub clamIsRunning{
 	my $t = new Proc::ProcessTable;
 	foreach my $p ( @{$t->table} ){
 		if($p->cmndline =~ m/^clamscan.+$scanDir/){
-			return(1,$p->pid,scalar(localtime($p->start)));
+			#my $pstart = (localtime($p->start));
+			return(1,$p->pid,$p->start);
 		}
 	}
 	return (0,0,0);
 }
 
+sub getClamRunsHours{
+	my @started = localtime(shift);
+	my @today = localtime;
+	
+	#get diff of two dates, since clamscan started
+	my @dD = Delta_DHMS($today[5],$today[4],$today[3],$today[2],$today[1],$today[0],
+						$started[5],$started[4],$started[3],$started[2],$started[1],$started[0]);
+	#convert the delta array to hours
+	my $dHours = ($dD[0]) * 24 + $dD[1] + ($dD[2] / 60) + ($dD[3] / 3600);
+	
+	#start was in the past
+	return $dHours * -1;
+}
+
+sub checkClamLog{
+	my $clamLog = shift;
+	my %scanStat;
+	my $fd; #fd for log file
+	unless (open($fd, "<", $clamLog)){
+		$scanStat{'clamscan_log'} = "Error: opening log";
+		return %scanStat;
+	}
+	my $pattern = "SCAN SUMMARY";
+	my $found;
+	while(<$fd>){
+		my $line = $_;
+		chomp($line);
+		#Check if scan summary is found
+		if($line =~ m/$pattern/){
+			$found = 1;
+			next;
+		}
+	}
+	if(not $found){
+		$scanStat{'clamscan_log'} = "Error: no scan summary";
+	}
+	return %scanStat;
+}
+
 sub parseClamLog{
 	my $clamLog = shift;
 	my %scanStat;
-	open(my $fd, "<", $clamLog)
-    	or die "Error: Cannot open < $clamLog: $!";
+	
+	open(my $fd, "<", $clamLog);
 	
 	my $pattern = "SCAN SUMMARY";
 	my $found;
@@ -171,7 +214,22 @@ sub getLastModified{
 	#as run was in the past mutiply with -1
 	return ($dD * -1,$modDate);
 }
-
+sub checkStates{
+	my %stateData = %{(shift)};
+	
+	#start with OK
+	my @statusLevel = ("OK");
+	my @warnSens = ();#warning sensors
+	my @critSens = ();#crit sensors
+	foreach my $k (keys %stateData){
+		#currently all present state sensors are critical
+		$statusLevel[0] = "Critical";
+		push(@critSens,$k);
+	}
+	push(@statusLevel,\@warnSens);
+	push(@statusLevel,\@critSens);
+	return \@statusLevel;
+}
 sub checkThlds{
 	my @warnThlds = @{(shift)};
 	my @critThls = @{(shift)};
@@ -185,6 +243,8 @@ sub checkThlds{
 			if($warnThlds[$i] ne 'd'){
 				switch($i){
 					case 0 {$PERF_THRESHOLDS{'scan_interval'}[0] = $warnThlds[$i]};
+					case 1 {$PERF_THRESHOLDS{'infected_files'}[0] = $warnThlds[$i]};
+					case 2 {$PERF_THRESHOLDS{'scan_runtime'}[0] = $warnThlds[$i]};
 				}					
 			}		
 		}			
@@ -195,6 +255,8 @@ sub checkThlds{
 			if($critThls[$i] ne 'd'){
 				switch($i){
 					case 0 {$PERF_THRESHOLDS{'scan_interval'}[1] = $critThls[$i]};
+					case 1 {$PERF_THRESHOLDS{'infected_files'}[1] = $critThls[$i]};
+					case 2 {$PERF_THRESHOLDS{'scan_runtime'}[1] = $critThls[$i]};
 				}
 			}		
 		}			
@@ -365,17 +427,42 @@ MAIN: {
 	if((substr $scanDir,-1,1) eq '/'){
 		chop $scanDir;
 	}
+
 	#Check if scan is running
 	my($ret,$pid,$start) = clamIsRunning($scanDir);
 	
-	#Start checking status of clamscan
-	my $exitCode = 0;
-	my %scanStat = parseClamLog($clamLog);
-	($scanStat{'scan_interval'},my $lastRun) = getLastModified($clamLog);
+	my $exitCode = 0;#exit code for nagios
+	my %scanStat;#status of performance values
+	my $clamIsRunning = 0;
+	my $statusLevel;#return of check thresholds and state methods
+	
+	#clamscan is running, check how long
+	if($ret eq 1 && $pid ne 0){
+		$scanStat{'scan_runtime'} = getClamRunsHours($start);
+		$clamIsRunning = 1;
+		$statusLevel = checkThlds(\@warnThlds,\@critThlds,\%scanStat);
+	}	
+	
+	#if clam runs not we check for a correct clamscan file
+	if(not $clamIsRunning){
+		%scanStat = checkClamLog($clamLog);
+	}
+	
+	#if clam runs not and log file is correct, parse file and check when last run was
+	my $lastRun;
+	if(not $clamIsRunning and not exists $scanStat{'clamscan_log'}){
+		%scanStat = parseClamLog($clamLog);
+		($scanStat{'scan_interval'},$lastRun) = getLastModified($clamLog);
+		$statusLevel = checkThlds(\@warnThlds,\@critThlds,\%scanStat);
+	}
+	
+	#the clam log file is not correct
+	if(exists $scanStat{'clamscan_log'}){
+		$statusLevel = checkStates(\%scanStat);
+	}
 
-	#check thresholds
-	my $statusLevel = checkThlds(\@warnThlds,\@critThlds,\%scanStat);
-	#check return values of threshold function
+	### starting printing output of plugin ###
+	#check return values of threshold or states function
 	if($statusLevel->[0] eq "Critical"){
 		$exitCode = 2;#Critical
 	}
@@ -384,16 +471,23 @@ MAIN: {
 	}
 	#print status and performance values
 	print $statusLevel->[0]." - ";
-	if($ret eq 1 && $pid ne 0){
-		print "Pid ".$pid." since ".$start." ";
+	if(not $clamIsRunning and not exists $scanStat{'clamscan_log'}){
+		print "Last run ".scalar($lastRun)." ";	
 	}
-	else{
-		print "Last run ".scalar($lastRun)." ";
+	if($clamIsRunning){
+		print "Pid ".$pid." since ".scalar(localtime($start))." ";
+	}
+	if(exists $scanStat{'clamscan_log'}){
+		print "Clam log file error ";
 	}
 	print getStrStatus("Critical",$statusLevel,\%scanStat,$verbosity);
 	print getStrStatus("Warning",$statusLevel,\%scanStat,$verbosity);
-	print "|";
-	print getStrStatus("Performance",\%scanStat);
-	print "\n".getStrVerbose($verbosity,$scanDir,$clamLog,\%scanStat);
-	exit($exitCode);
+	if(not exists $scanStat{'clamscan_log'}){
+		print "|";
+		print getStrStatus("Performance",\%scanStat);
+	}
+	if($verbosity){
+		print "\n".getStrVerbose($verbosity,$scanDir,$clamLog,\%scanStat);
+	}
+	exit $exitCode;
 }
