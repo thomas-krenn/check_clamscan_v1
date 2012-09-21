@@ -326,7 +326,7 @@ sub getStrStatus{
 			#print warn and crit thresholds
 			if(exists $PERF_THRESHOLDS{$k}){
 				$str_status .= ";".$PERF_THRESHOLDS{$k}[0];
-				$str_status .= ";".$PERF_THRESHOLDS{$k}[1].";";
+				$str_status .= ";".$PERF_THRESHOLDS{$k}[1];
 			}
 			if($i != (keys %$currSensors)){
 				$str_status .= " ";
