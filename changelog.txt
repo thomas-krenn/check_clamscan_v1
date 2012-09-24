@@ -7,10 +7,12 @@ Version 0.1 20120913
   * Displaying the pid of the process if clamAV is currently running
   * Checking the last run of clamAV via "stat" method on the clamAV 
     log file and return warning/critical if last check was too long ago.
+  * Printing engine version of last scan.
   * Threshold for last scan is configurable with "-w" and "-c" options.
 
 
 List of contributors to version 1.*:
   Georg Schönberger, Thomas-Krenn.AG
+  Christoph Mitasch, Thomas-Krenn.AG
 
 ################################################################################
