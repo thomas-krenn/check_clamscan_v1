@@ -322,11 +322,15 @@ sub getStrStatus{
 	#Collect performance values followed by thresholds
 	if($level eq "Performance"){
 		foreach my $k (keys %$currSensors){
+			#skip engine version as it is not parsed by pnp
+			if($k eq 'engine_version'){
+				next;
+			}
 			$str_status .= $k."=".$currSensors->{$k};
 			#print warn and crit thresholds
 			if(exists $PERF_THRESHOLDS{$k}){
 				$str_status .= ";".$PERF_THRESHOLDS{$k}[0];
-				$str_status .= ";".$PERF_THRESHOLDS{$k}[1];
+				$str_status .= ";".$PERF_THRESHOLDS{$k}[1].";";
 			}
 			if($i != (keys %$currSensors)){
 				$str_status .= " ";
@@ -471,7 +475,7 @@ MAIN: {
 	#print status and performance values
 	print $statusLevel->[0]." - ";
 	if(not $clamIsRunning and not exists $scanStat{'clamscan_log'}){
-		print "Last run ".scalar($lastRun)." ";	
+		print "Last run ".scalar($lastRun)." using engine ".$scanStat{'engine_version'}." ";	
 	}
 	if($clamIsRunning){
 		print "Pid ".$pid." since ".scalar(localtime($start))." ";
