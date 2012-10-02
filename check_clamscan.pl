@@ -89,7 +89,7 @@ sub getHelp{
        is the same as for the warning levels.
        Levels that should stay default get a 'd' assigned.
        Example:
-           check_gpu_sensor.pl -c '7,d,d' 
+           check_clamscan.pl -c '7,d,d' 
        This changes the critical level for the scan interval to 7 days.  		
   [-v <Verbose Level>]
        be verbose
