@@ -33,6 +33,7 @@ use File::stat;
 use Switch;
 use Date::Calc qw(Delta_Days);
 use Date::Calc qw(Delta_DHMS);
+use Date::Calc qw(Localtime);
 
 our $CLAMSCAN;#path to clamscan binary
 #warning and critical threshold levels
@@ -78,16 +79,17 @@ sub getHelp{
        is the following:
        -scan_interval
        -infected_files
+       -scan_runtime
        Levels that should stay default get a 'd' assigned.
        Example:
-           check_clamscan.pl -w '5,d' 
+           check_clamscan.pl -w '5,d,d' 
        This changes the warning level for the scan interval to 5 days.
   [-c <list of critical thresholds>]
        Change the default critical levels. The order of the levels
        is the same as for the warning levels.
        Levels that should stay default get a 'd' assigned.
        Example:
-           check_gpu_sensor.pl -c '7,d' 
+           check_gpu_sensor.pl -c '7,d,d' 
        This changes the critical level for the scan interval to 7 days.  		
   [-v <Verbose Level>]
        be verbose
@@ -120,12 +122,13 @@ sub clamIsRunning{
 }
 
 sub getClamRunsHours{
-	my @started = localtime(shift);
-	my @today = localtime;
+	#use Localtime from Date::Calc for calculations
+	my @started = Localtime(shift);
+	my @today = Localtime;
 	
 	#get diff of two dates, since clamscan started
-	my @dD = Delta_DHMS($today[5],$today[4],$today[3],$today[2],$today[1],$today[0],
-						$started[5],$started[4],$started[3],$started[2],$started[1],$started[0]);
+	my @dD = Delta_DHMS($today[0],$today[1],$today[2],$today[3],$today[4],$today[5],
+						$started[0],$started[1],$started[2],$started[3],$started[4],$started[5]);
 	#convert the delta array to hours
 	my $dHours = ($dD[0]) * 24 + $dD[1] + ($dD[2] / 60) + ($dD[3] / 3600);
 	
@@ -206,10 +209,12 @@ sub getLastModified{
 	#index 9 is mtime of stat
 	my $mtime = $logStat[0][9];
 	my $modDate = localtime($mtime);
-	my @a_mtime = (localtime($mtime));
-	my @today = localtime;
-	my $dD = Delta_Days($today[5],$today[4],$today[3],
-						$a_mtime[5],$a_mtime[4],$a_mtime[3]);
+
+	#use Localtime from Date::Calc for calculations
+	my @a_mtime = (Localtime($mtime));
+	my @today = Localtime();
+	my $dD = Delta_Days($today[0],$today[1],$today[2],
+						$a_mtime[0],$a_mtime[1],$a_mtime[2]);
 	#as run was in the past mutiply with -1
 	return ($dD * -1,$modDate);
 }
