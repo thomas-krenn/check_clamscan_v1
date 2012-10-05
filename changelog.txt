@@ -2,13 +2,17 @@
 Changelog for check_clamscan, a Nagios/Icinga plugin to check the output of clamAV
 ################################################################################
 
-Version 0.1 20120913
+Version 1.0 20121005
   * Checking the scan summary of a clamAV log output
   * Displaying the pid of the process if clamAV is currently running
+  * Check the runtime of the current clamscan run and warn/crit if
+    the scan takes too long. This is required if clamscan hangs e.g.
+    on a malware file causing clamscan to run infinitely.
   * Checking the last run of clamAV via "stat" method on the clamAV 
     log file and return warning/critical if last check was too long ago.
   * Printing engine version of last scan.
-  * Threshold for last scan is configurable with "-w" and "-c" options.
+  * Thresholds for last scan, infected files and scan runtime
+  	is configurable with "-w" and "-c" options.
 
 
 List of contributors to version 1.*:
