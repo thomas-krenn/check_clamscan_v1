@@ -22,41 +22,40 @@
  -------------
    o Perl
    o Required perl modules
-	 * use strict;
-	 * use warnings;
-	 * use Getopt::Long;
-	 * use Proc::ProcessTable;
-	 * use File::stat;
-	 * use Switch;
-	 * use Date::Calc qw(Delta_Days);
+		* use strict;
+		* use warnings;
+		* use Getopt::Long qw(:config no_ignore_case);
+		* use Proc::ProcessTable;
+		* use File::stat;
+		* use Switch;
+		* use Date::Calc qw(Delta_Days);
+		* use Date::Calc qw(Delta_DHMS);
+		* use Date::Calc qw(Localtime);
    o Nagios or Icinga
 
-
- Installation hints:
+ Installation Hints:
  -------------------
-   On Debian/Ubuntu use
-   $ sudo apt-get install libproc-processtable-perl libclass-date-perl 
-   to install the module for accessing the process table and date functions.
+	On Debian/Ubuntu use
+	$ sudo apt-get install libproc-processtable-perl libclass-date-perl 
+	to install the module for accessing the process table and date functions.
 
  Cron Job for Clamscan:
- -------------------
+ ----------------------
+	$ touch /etc/cron.daily/clamscan
+	$ chmod +x /etc/cron.daily/clamscan
 
-touch /etc/cron.daily/clamscan
-chmod +x /etc/cron.daily/clamscan
+	/etc/cron.daily/clamscan:
+		#!/bin/sh
+		logrotate -f /etc/logrotate_clamscan.conf
+		clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
 
-/etc/cron.daily/clamscan:
-#!/bin/sh
-logrotate -f /etc/logrotate_clamscan.conf
-clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
-
-  Logrotate Job for Clamscan:
-  -------------------
-
-/etc/logrotate_clamscan.conf
-/var/log/clamav/clamscan.log {
-     rotate 30
-     daily
-     ifempty
-     missingok
-     nocompress
-}
+ Logrotate Job for Clamscan:
+ ---------------------------
+	/etc/logrotate_clamscan.conf:
+		/var/log/clamav/clamscan.log {
+			rotate 30
+			daily
+			ifempty
+			missingok
+			nocompress
+		}
