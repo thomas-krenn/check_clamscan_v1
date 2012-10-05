@@ -45,7 +45,7 @@ our %PERF_THRESHOLDS = (
 
 
 sub getVersion{
-		return "check_clamscan version 0.1 20120912
+		return "check_clamscan version 1.0 20121005
 Copyright (C) 2012 Thomas-Krenn.AG (written by Georg Schönberger)
 Current updates available via git repository git.thomas-krenn.com.
 Your system is using ".getClamscanVersion();
@@ -69,27 +69,28 @@ sub getHelp{
 
   [-sd <scanned directory>]
         Provide the path to the directory scanned by clamscan. This is useful to detect if
-        clamscan is currently running and scanning the directory.
+        clamscan is currently running and scanning the directory as the path is visible
+        in the ps command.
   [-l <clamscan log file>]
         Provide the path to the clamscan log output. Clamscan should be called with
         the '--stdout' and the output redirected to the log file via '>'.
         E.g. clamscan -r /files --stdout > clamscan.log
   [-w <list of warning thresholds>]
        Change the default warning levels. The order of the levels
-       is the following:
+       is:
        -scan_interval
        -infected_files
        -scan_runtime
        Levels that should stay default get a 'd' assigned.
        Example:
-           check_clamscan.pl -w '5,d,d' 
+           check_clamscan -w '5,d,d' 
        This changes the warning level for the scan interval to 5 days.
   [-c <list of critical thresholds>]
        Change the default critical levels. The order of the levels
        is the same as for the warning levels.
        Levels that should stay default get a 'd' assigned.
        Example:
-           check_clamscan.pl -c '7,d,d' 
+           check_clamscan -c '7,d,d' 
        This changes the critical level for the scan interval to 7 days.  		
   [-v <Verbose Level>]
        be verbose
