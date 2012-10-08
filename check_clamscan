@@ -45,7 +45,7 @@ our %PERF_THRESHOLDS = (
 
 
 sub getVersion{
-		return "check_clamscan version 1.0 20121005
+		return "check_clamscan version 1.0 20121008
 Copyright (C) 2012 Thomas-Krenn.AG (written by Georg Schönberger)
 Current updates available via git repository git.thomas-krenn.com.
 Your system is using ".getClamscanVersion();
@@ -74,7 +74,7 @@ sub getHelp{
   [-l <clamscan log file>]
         Provide the path to the clamscan log output. Clamscan should be called with
         the '--stdout' and the output redirected to the log file via '>'.
-        E.g. clamscan -r /files --stdout > clamscan.log
+        E.g. clamscan -r -i --stdout /home/ > /var/log/clamav/clamscan.log
   [-w <list of warning thresholds>]
        Change the default warning levels. The order of the levels
        is:
@@ -101,7 +101,9 @@ sub getHelp{
   [-h]
        show this help
   [-V]
-       show version information";
+       show version information
+  * Example Usage of plugin:
+       check_clamscan -sd /home/ -l /var/log/clamav/clamscan.log";
 }
 sub checkClamscanBin{
 	my $clamBin = `which clamscan 2>&1`;
@@ -115,7 +117,6 @@ sub clamIsRunning{
 	my $t = new Proc::ProcessTable;
 	foreach my $p ( @{$t->table} ){
 		if($p->cmndline =~ m/^clamscan.+$scanDir/){
-			#my $pstart = (localtime($p->start));
 			return(1,$p->pid,$p->start);
 		}
 	}
@@ -439,7 +440,7 @@ MAIN: {
 
 	#Check if scan is running
 	my($ret,$pid,$start) = clamIsRunning($scanDir);
-	
+
 	my $exitCode = 0;#exit code for nagios
 	my %scanStat;#status of performance values
 	my $clamIsRunning = 0;

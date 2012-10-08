@@ -2,7 +2,7 @@
 Changelog for check_clamscan, a Nagios/Icinga plugin to check the output of clamAV
 ################################################################################
 
-Version 1.0 20121005
+Version 1.0 20121008
   * Checking the scan summary of a clamAV log output
   * Displaying the pid of the process if clamAV is currently running
   * Check the runtime of the current clamscan run and warn/crit if
@@ -13,7 +13,7 @@ Version 1.0 20121005
   * Printing engine version of last scan.
   * Thresholds for last scan, infected files and scan runtime
   	is configurable with "-w" and "-c" options.
-
+  * Adding an example of how to call the plugin
 
 List of contributors to version 1.*:
   Georg Schönberger, Thomas-Krenn.AG

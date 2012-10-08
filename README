@@ -39,6 +39,14 @@
 	$ sudo apt-get install libproc-processtable-perl libclass-date-perl 
 	to install the module for accessing the process table and date functions.
 
+ Plugin parameters:
+ ------------------
+ Call the plugin with
+ 		o The directory scanned by clamsscan
+ 		o The output log file (via stdout from clamsscan)
+ Example:
+ 		check_clamscan -sd /home/ -l /var/log/clamav/clamscan.log
+
  Cron Job for Clamscan:
  ----------------------
 	$ touch /etc/cron.daily/clamscan
