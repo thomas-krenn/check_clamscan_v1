@@ -36,7 +36,7 @@
  Installation Hints:
  -------------------
 	On Debian/Ubuntu use
-	$ sudo apt-get install libproc-processtable-perl libclass-date-perl 
+	$ sudo apt-get install libproc-processtable-perl libclass-date-perl libdate-calc-perl
 	to install the module for accessing the process table and date functions.
 
  Plugin parameters:
