@@ -47,7 +47,7 @@ our %PERF_THRESHOLDS = (
 sub getVersion{
 		return "check_clamscan version 1.0 20121008
 Copyright (C) 2012 Thomas-Krenn.AG (written by Georg Schönberger)
-Current updates available via git repository git.thomas-krenn.com.
+Current updates available via GitHub https://github.com/thomas-krenn/
 Your system is using ".getClamscanVersion();
 }
 sub getClamscanVersion{
